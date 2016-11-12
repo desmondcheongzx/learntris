@@ -21,3 +21,10 @@
 #*.*
 *.*#
 *.*~
+
+# Compiled lisp files
+.fasl
+.FASL
+
+# Etc
+.swp
