@@ -70,18 +70,19 @@
 		       row))))
 
 (defun rotate-clockwise ()
-  (let ((tmatrix nil)
-	(trow nil))
-    (labels ((builder (place row)
-	       (unless (null (car row))
-		 (push (pop row) (car place))
-		 (print row)
-		 (builder (cdr place) row))))
-      (mapcar #'(lambda (x) (builder tmatrix x)) *active-tetramino*))
-    (print tmatrix)))
+  (setf *active-tetramino* (mapcar #'nreverse *active-tetramino*))
+  (rotate-anti-clockwise)
+  (setf *active-tetramino* (mapcar #'nreverse *active-tetramino*)))
 
 (defun rotate-anti-clockwise ()
-  (let ((tmatrix nil))
+  (setf *active-tetramino*
+	(nreverse
+	  (labels ((pop-and-go (l)
+		     (if (null (car l)) nil
+			 (progn
+			   (cons (pop (car l)) (pop-and-go (cdr l)))))))
+	    (loop until (null (car *active-tetramino*))
+	       collect (pop-and-go *active-tetramino*))))))
 
 (defun set-tetramino (input)
   (case input
