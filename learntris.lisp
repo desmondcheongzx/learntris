@@ -8,25 +8,25 @@
 (defparameter *valid-input* '(#\. #\b #\c #\g #\m #\o #\r #\y))
 (defvar *active-tetramino* nil)
 (defparameter i-tetramino '((#\. #\. #\. #\.)
-			    (#\c #\c #\c #\c)
+			    (#\C #\C #\C #\C)
 			    (#\. #\. #\. #\.)
 			    (#\. #\. #\. #\.)))
-(defparameter o-tetramino '((#\y #\y)
-			    (#\y #\y)))
-(defparameter z-tetramino '((#\r #\r #\.)
-			    (#\. #\r #\r)
+(defparameter o-tetramino '((#\Y #\Y)
+			    (#\Y #\Y)))
+(defparameter z-tetramino '((#\R #\R #\.)
+			    (#\. #\R #\R)
 			    (#\. #\. #\.)))
-(defparameter s-tetramino '((#\. #\g #\g)
-			    (#\g #\g #\.)
+(defparameter s-tetramino '((#\. #\G #\G)
+			    (#\G #\G #\.)
 			    (#\. #\. #\.)))
-(defparameter j-tetramino '((#\b #\. #\.)
-			    (#\b #\b #\b)
+(defparameter j-tetramino '((#\B #\. #\.)
+			    (#\B #\B #\B)
 			    (#\. #\. #\.)))
-(defparameter l-tetramino '((#\. #\. #\o)
-			    (#\o #\o #\o)
+(defparameter l-tetramino '((#\. #\. #\O)
+			    (#\O #\O #\O)
 			    (#\. #\. #\.)))
-(defparameter t-tetramino '((#\. #\m #\.)
-			    (#\m #\m #\m)
+(defparameter t-tetramino '((#\. #\M #\.)
+			    (#\M #\M #\M)
 			    (#\. #\. #\.)))
 
 (defun global-init ()
@@ -58,7 +58,9 @@
     (?w (display *score*)) ;changed to w because we substitute w for s
     (?n (display *lines-cleared*))
     ((I O Z S J L V) (set-tetramino input))
-    (f (rotate-clockwise))))
+    (f (rotate-clockwise))
+    (d (rotate-anti-clockwise))
+    (k (format t "~%"))))
 
 (defun next-step ()
   (setf *board*
@@ -103,8 +105,7 @@
 
 (defun reader ()
   (let ((input (read-char)))
-    (if (member input *valid-input*)
-	input
+    (if (member input *valid-input*) input
 	(reader))))
 ;;yeah yeah it's fucking stupid but what can i do
 ;;they're partial towards languages that don't have
@@ -115,7 +116,9 @@
 
 (defparameter substitutions '((#\w #\s)
 			      (#\V #\T)
-			      (#\) #\f))) ;f for clockwise, duh
+			      (#\k #\;)
+			      (#\f #\)) ;f for clockwise, duh
+			      (#\d #\())) ;d for anti-clockwise, duh duh
 (defun input-converter (input quit)
   (labels ((substituter (subs cur)
 	     (if (null (car subs)) cur
@@ -132,14 +135,3 @@
 			  ")")))))
 
 (game)
-
-
-
-
-
-
-
-
-
-
-
