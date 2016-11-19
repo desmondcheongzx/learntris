@@ -33,9 +33,6 @@
   (setf empty-board (loop for i from 1 to 22 collect empty-row))
   (init))
 
-(defun unbroken-row-p (row)
-  (loop for i in row never (char= i #\.)))
-
 (defun init ()
   (setf *lines-cleared* 0)
   (setf *score* 0)
@@ -49,6 +46,36 @@
     (loop for input = (read-line)
        do (input-converter input))))
 
+(let ((special nil)
+      (specials '((#\s ?s)
+		  (#\n ?n))))
+  (labels ((specify (c)
+	     (second (assoc c specials))))
+    (defun input-converter (input)
+      (setf special nil)
+      (loop for c across input
+	 when (eql c #\?)
+	 do (setf special t)
+	 else unless (eql c #\space)
+	 do (progn (input-handler (if special (specify c) c))
+		   (setf special nil))))))
+
+(defun input-handler (input)
+  (case input
+    (#\p (print-matrix *board*))
+    (#\q (funcall end-game))
+    (#\g (input-board))
+    (#\c (init))
+    (?s (display *score*))
+    (?n (display *lines-cleared*))
+    (#\s (next-step))
+    (#\t (print-matrix *active-tetramino*))
+    ((#\I #\O #\Z #\S #\J #\L #\T) (set-tetramino input))
+    (#\) (rotate-clockwise))
+    (#\( (rotate-anti-clockwise))
+    (#\; (format t "~%"))
+    (#\P (insert-tetramino))))
+
 (defun next-step ()
   (setf *board*
 	(loop for row in *board*
@@ -57,6 +84,9 @@
 			      (incf *score* 100)
 			      empty-row)
 		       row))))
+
+(defun unbroken-row-p (row)
+  (loop for i in row never (char= i #\.)))
 
 (defun insert-tetramino ()
   (setf *board*
@@ -101,6 +131,9 @@
     (#\L (setf *active-tetramino* l-tetramino))
     (#\T (setf *active-tetramino* t-tetramino))))
 
+(defun display (val)
+  (format t "~a~%" val))
+
 (defun print-matrix (matrix)
   (format t "~{~{~a~^ ~}~%~}" matrix))
 
@@ -113,38 +146,5 @@
        (loop for c across (read-line)
 	  unless (eql c #\space)
 	    collect c)))
-
-(defun display (val)
-  (format t "~a~%" val))
-
-(defun input-handler (input)
-  (case input
-    (#\p (print-matrix *board*))
-    (#\q (funcall end-game))
-    (#\g (input-board))
-    (#\c (init))
-    (?s (display *score*))
-    (?n (display *lines-cleared*))
-    (#\s (next-step))
-    (#\t (print-matrix *active-tetramino*))
-    ((#\I #\O #\Z #\S #\J #\L #\T) (set-tetramino input))
-    (#\) (rotate-clockwise))
-    (#\( (rotate-anti-clockwise))
-    (#\; (format t "~%"))
-    (#\P (insert-tetramino))))
-
-(let ((special nil)
-      (specials '((#\s ?s)
-		  (#\n ?n))))
-  (labels ((specify (c)
-	     (second (assoc c specials))))
-    (defun input-converter (input)
-      (setf special nil)
-      (loop for c across input
-	 when (eql c #\?)
-	 do (setf special t)
-	 else unless (eql c #\space)
-	 do (progn (input-handler (if special (specify c) c))
-		   (setf special nil))))))
 
 (game)
