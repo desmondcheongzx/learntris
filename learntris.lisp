@@ -7,6 +7,7 @@
 (defvar empty-row nil)
 (defvar empty-board nil)			      
 (defvar *active-tetramino* nil)
+(defvar *game-over* nil)
 (defparameter i-tetramino '((#\. #\. #\. #\.)
 			    (#\c #\c #\c #\c)
 			    (#\. #\. #\. #\.)
@@ -28,15 +29,19 @@
 (defparameter t-tetramino '((#\. #\m #\.)
 			    (#\m #\m #\m)
 			    (#\. #\. #\.)))
-(defparameter welcome-message
-  "Learntris (c) 1992 Tetraminex, Inc.
+(defparameter messages
+  '((pause "Paused
+Press start button to continue.")
+    (welcome "Learntris (c) 1992 Tetraminex, Inc.
 Press start button to begin.")
+    (lost "Game Over")))
 
 (defun global-init ()
   (setf empty-row (loop for i from 1 to 10 collect #\.))
   (setf empty-board (loop for i from 1 to 22 collect empty-row))
   (init))
 
+(defvar *handler* nil)
 (defun init ()
   (setf *handler* #'game-handler)
   (setf *lines-cleared* 0)
@@ -45,8 +50,6 @@ Press start button to begin.")
   (setf *tetramino-board* empty-board))
 
 (defvar end-game nil)
-(defvar *handler* nil)
-
 (defun game ()
   (global-init)
   (block quit
@@ -54,11 +57,14 @@ Press start button to begin.")
     (loop for input = (read-line)
        do (input-converter input))))
 
+(defun get-value (l)
+  (second l))
+
 (let ((special nil)
       (specials '((#\s ?s)
 		  (#\n ?n))))
   (labels ((specify (c)
-	     (second (assoc c specials))))
+	     (get-value (assoc c specials))))
     (defun input-converter (input)
       (setf special nil)
       (loop for c across input
@@ -70,12 +76,13 @@ Press start button to begin.")
 
 (defun menu-handler (input)
   (case input
-    (#\p (display welcome-message))
+    (#\p (display-message 'welcome))
     (#\! (setf *handler* #'game-handler))))
 
 (defun game-handler (input)
   (case input
     (#\@ (setf *handler* #'menu-handler))
+    (#\! (pause-game))
     (#\p (print-board))
     (#\q (funcall end-game))
     (#\g (input-board))
@@ -92,6 +99,16 @@ Press start button to begin.")
     ((#\< #\> #\v) (nudge input))
     (#\V (plunge))))
 
+(defun pause-handler (input)
+  (when (eql #\! input) (setf *handler* #'game-handler)))
+
+(defun pause-game ()
+  (display-message 'pause)
+  (setf *handler* #'pause-handler))
+
+(defun display-message (key)
+  (display (get-value (assoc key messages))))
+
 (defun next-step ()
   (loop for row in *board*
      for x = 0 then (1+ x)
@@ -100,8 +117,7 @@ Press start button to begin.")
 	       (incf *score* 100)
 	       (setf (elt *board* x) empty-row))))
 	   
-(defun blank-p (char)
-  (eql char #\.))
+(defun blank-p (char) (eql char #\.))
 
 (defun unbroken-row-p (row)
   (loop for x in row never (blank-p x)))
@@ -148,7 +164,15 @@ Press start button to begin.")
       (setf *tetramino-board* scratch-board))))
 
 (defun plunge ()
-  (loop until (null (nudge #\v))))
+  (loop until (null (nudge #\v)))
+  (setf *tetramino-board*
+	(loop for row in *tetramino-board*
+	     collect (loop for x in row collect (char-downcase x))))
+  (when (loop repeat 2
+	  for row in *tetramino-board*
+	  thereis (not (loop for x in row
+			  always (blank-p x))))
+    (setf *game-over* t)))
 
 (defun rotate-clockwise ()
   (setf *active-tetramino*
@@ -169,7 +193,6 @@ Press start button to begin.")
 	    (loop until (null (car *active-tetramino*))
 	       collect (pop-and-go *active-tetramino*)))))
   (insert-tetramino))
-  
 
 (defun set-tetramino (input)
   (setf *active-tetramino*
@@ -195,7 +218,8 @@ Press start button to begin.")
 			    xa))))
 
 (defun print-board (&key (active nil))
-  (print-matrix (combine-boards :active active)))
+  (print-matrix (combine-boards :active active))
+  (when *game-over* (display-message 'lost)))
 
 (defun display (val)
   (format t "~a~%" val))
@@ -214,6 +238,3 @@ Press start button to begin.")
 	    collect c)))
 
 (game)
-
-
-
