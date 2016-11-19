@@ -4,29 +4,28 @@
 (defvar *score* 0)
 (defvar *lines-cleared* 0)
 (defvar empty-row nil)
-(defvar empty-board nil)
-(defparameter *valid-input* '(#\. #\b #\c #\g #\m #\o #\r #\y))
+(defvar empty-board nil)			      
 (defvar *active-tetramino* nil)
 (defparameter i-tetramino '((#\. #\. #\. #\.)
-			    (#\C #\C #\C #\C)
+			    (#\c #\c #\c #\c)
 			    (#\. #\. #\. #\.)
 			    (#\. #\. #\. #\.)))
-(defparameter o-tetramino '((#\Y #\Y)
-			    (#\Y #\Y)))
-(defparameter z-tetramino '((#\R #\R #\.)
-			    (#\. #\R #\R)
+(defparameter o-tetramino '((#\y #\y)
+			    (#\y #\y)))
+(defparameter z-tetramino '((#\r #\r #\.)
+			    (#\. #\r #\r)
 			    (#\. #\. #\.)))
-(defparameter s-tetramino '((#\. #\G #\G)
-			    (#\G #\G #\.)
+(defparameter s-tetramino '((#\. #\g #\g)
+			    (#\g #\g #\.)
 			    (#\. #\. #\.)))
-(defparameter j-tetramino '((#\B #\. #\.)
-			    (#\B #\B #\B)
+(defparameter j-tetramino '((#\b #\. #\.)
+			    (#\b #\b #\b)
 			    (#\. #\. #\.)))
-(defparameter l-tetramino '((#\. #\. #\O)
-			    (#\O #\O #\O)
+(defparameter l-tetramino '((#\. #\. #\o)
+			    (#\o #\o #\o)
 			    (#\. #\. #\.)))
-(defparameter t-tetramino '((#\. #\M #\.)
-			    (#\M #\M #\M)
+(defparameter t-tetramino '((#\. #\m #\.)
+			    (#\m #\m #\m)
 			    (#\. #\. #\.)))
 
 (defun global-init ()
@@ -42,25 +41,13 @@
   (setf *score* 0)
   (setf *board* empty-board))
 
+(defvar end-game nil)
 (defun game ()
   (global-init)
   (block quit
+    (setf end-game #'(lambda () (return-from quit)))
     (loop for input = (read-line)
-       do (input-converter input #'(lambda () (return-from quit))))))
-
-(defun input-handler (input)
-  (case input
-    (w (next-step)) ;changed to w because we substitute w for small s
-    (p (print-matrix *board*))
-    ((t) (print-matrix *active-tetramino*))
-    (g (setf *board* (read-board)))
-    (c (init))
-    (?w (display *score*)) ;changed to w because we substitute w for s
-    (?n (display *lines-cleared*))
-    ((I O Z S J L V) (set-tetramino input))
-    (f (rotate-clockwise))
-    (d (rotate-anti-clockwise))
-    (k (format t "~%"))))
+       do (input-converter input))))
 
 (defun next-step ()
   (setf *board*
@@ -71,14 +58,32 @@
 			      empty-row)
 		       row))))
 
+(defun insert-tetramino ()
+  (setf *board*
+	(append
+	 (loop
+	    initially (loop for row in *active-tetramino* do (pop *board*))
+	    for row in *active-tetramino*
+	    collect (generate-row row))
+	 *board*))
+  (print-matrix *board*))
+
+(defun generate-row (row)
+  (setf row (mapcar #'char-upcase row))
+  (let ((right t))
+    (loop until (= (length row) 10)
+       do (if right (progn (setf row (append row '(#\.))) (setf right nil))
+	      (progn (push #\. row) (setf right t)))))
+  row)
+
 (defun rotate-clockwise ()
-  (setf *active-tetramino* (mapcar #'nreverse *active-tetramino*))
+  (setf *active-tetramino* (mapcar #'reverse *active-tetramino*))
   (rotate-anti-clockwise)
-  (setf *active-tetramino* (mapcar #'nreverse *active-tetramino*)))
+  (setf *active-tetramino* (mapcar #'reverse *active-tetramino*)))
 
 (defun rotate-anti-clockwise ()
   (setf *active-tetramino*
-	(nreverse
+	(reverse
 	  (labels ((pop-and-go (l)
 		     (if (null (car l)) nil
 			 (progn
@@ -88,50 +93,58 @@
 
 (defun set-tetramino (input)
   (case input
-    (I (setf *active-tetramino* i-tetramino))
-    (O (setf *active-tetramino* o-tetramino))
-    (Z (setf *active-tetramino* z-tetramino))
-    (S (setf *active-tetramino* s-tetramino))
-    (J (setf *active-tetramino* j-tetramino))
-    (L (setf *active-tetramino* l-tetramino))
-    (V (setf *active-tetramino* t-tetramino))))
+    (#\I (setf *active-tetramino* i-tetramino))
+    (#\O (setf *active-tetramino* o-tetramino))
+    (#\Z (setf *active-tetramino* z-tetramino))
+    (#\S (setf *active-tetramino* s-tetramino))
+    (#\J (setf *active-tetramino* j-tetramino))
+    (#\L (setf *active-tetramino* l-tetramino))
+    (#\T (setf *active-tetramino* t-tetramino))))
 
 (defun print-matrix (matrix)
   (format t "~{~{~a~^ ~}~%~}" matrix))
 
+(defun input-board ()
+  (setf *board* (read-board)))
+
 (defun read-board ()
   (loop for i from 1 to 22
-       collect (loop for j from 1 to 10 collect (reader))))
-
-(defun reader ()
-  (let ((input (read-char)))
-    (if (member input *valid-input*) input
-	(reader))))
-;;yeah yeah it's fucking stupid but what can i do
-;;they're partial towards languages that don't have
-;;special meanings for the period :(
+     collect
+       (loop for c across (read-line)
+	  unless (eql c #\space)
+	    collect c)))
 
 (defun display (val)
   (format t "~a~%" val))
 
-(defparameter substitutions '((#\w #\s)
-			      (#\V #\T)
-			      (#\k #\;)
-			      (#\f #\)) ;f for clockwise, duh
-			      (#\d #\())) ;d for anti-clockwise, duh duh
-(defun input-converter (input quit)
-  (labels ((substituter (subs cur)
-	     (if (null (car subs)) cur
-		 (substitute (first (car subs))
-			     (second (car subs))
-			     (substituter (cdr subs) cur)))))
-    (mapcar #'(lambda (x)
-		(if (equal x 'q)
-		    (funcall quit)
-		    (input-handler x)))
-	    (read-from-string
-	     (concatenate 'string "("
-			  (substituter substitutions input)
-			  ")")))))
+(defun input-handler (input)
+  (case input
+    (#\p (print-matrix *board*))
+    (#\q (funcall end-game))
+    (#\g (input-board))
+    (#\c (init))
+    (?s (display *score*))
+    (?n (display *lines-cleared*))
+    (#\s (next-step))
+    (#\t (print-matrix *active-tetramino*))
+    ((#\I #\O #\Z #\S #\J #\L #\T) (set-tetramino input))
+    (#\) (rotate-clockwise))
+    (#\( (rotate-anti-clockwise))
+    (#\; (format t "~%"))
+    (#\P (insert-tetramino))))
+
+(let ((special nil)
+      (specials '((#\s ?s)
+		  (#\n ?n))))
+  (labels ((specify (c)
+	     (second (assoc c specials))))
+    (defun input-converter (input)
+      (setf special nil)
+      (loop for c across input
+	 when (eql c #\?)
+	 do (setf special t)
+	 else unless (eql c #\space)
+	 do (progn (input-handler (if special (specify c) c))
+		   (setf special nil))))))
 
 (game)
