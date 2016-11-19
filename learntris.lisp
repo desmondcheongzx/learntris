@@ -64,7 +64,7 @@
 
 (defun input-handler (input)
   (case input
-    (#\p (print-matrix *board*))
+    (#\p (print-board))
     (#\q (funcall end-game))
     (#\g (input-board))
     (#\c (init))
@@ -77,7 +77,8 @@
     (#\( (rotate-anti-clockwise))
     (#\; (format t "~%"))
     (#\P (print-matrix *tetramino-board*))
-    ((#\< #\> #\v) (nudge input))))
+    ((#\< #\> #\v) (nudge input))
+    (#\V (plunge))))
 
 (defun next-step ()
   (setf *board*
@@ -92,7 +93,7 @@
   (loop for i in row never (char= i #\.)))
 
 (defun insert-tetramino ()
-  (loop initially (setf *tetramino-board* empty-board)
+  (loop initially (setf *tetramino-board* (copy-list empty-board))
      for x = 0 then (1+ x)
      for row in *active-tetramino*
      do (setf (elt *tetramino-board* x) (generate-row row))))
@@ -112,7 +113,7 @@
     (#\> (notevery #'(lambda (row) (eql #\. (car (last row))))
 		 *tetramino-board*))
     (#\v (notevery #'(lambda (char) (eql #\. char))
-		    (car (last *tetramino-board*))))))
+		   (car (last *tetramino-board*))))))
 
 (defun nudge (direction)
   (unless (collision-p direction)
@@ -123,6 +124,9 @@
 	    (#\> (loop for row in *tetramino-board*
 		    collect (cons #\. (butlast row))))
 	    (#\v (cons empty-row (butlast *tetramino-board*)))))))
+
+(defun plunge ()
+  (loop until (null (nudge #\v))))
 
 (defun rotate-clockwise ()
   (setf *active-tetramino*
@@ -155,6 +159,14 @@
     (#\L (setf *active-tetramino* l-tetramino))
     (#\T (setf *active-tetramino* t-tetramino)))
   (insert-tetramino))
+
+(defun print-board ()
+  (print-matrix 
+   (loop for ya in *board*
+      for yb in *tetramino-board*
+      collect (loop for xa in ya
+		 for xb in yb
+		 collect (if (eql xa #\.) (char-downcase xb) xa)))))
 
 (defun display (val)
   (format t "~a~%" val))
