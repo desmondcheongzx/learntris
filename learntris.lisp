@@ -1,32 +1,33 @@
 #!/usr/bin/sbcl --script
 
 (defvar *board* nil)
+(defvar *tetramino-board* nil)
 (defvar *score* 0)
 (defvar *lines-cleared* 0)
 (defvar empty-row nil)
 (defvar empty-board nil)			      
 (defvar *active-tetramino* nil)
-(defparameter i-tetramino '((#\. #\. #\. #\.)
-			    (#\c #\c #\c #\c)
-			    (#\. #\. #\. #\.)
-			    (#\. #\. #\. #\.)))
-(defparameter o-tetramino '((#\y #\y)
-			    (#\y #\y)))
-(defparameter z-tetramino '((#\r #\r #\.)
-			    (#\. #\r #\r)
-			    (#\. #\. #\.)))
-(defparameter s-tetramino '((#\. #\g #\g)
-			    (#\g #\g #\.)
-			    (#\. #\. #\.)))
-(defparameter j-tetramino '((#\b #\. #\.)
-			    (#\b #\b #\b)
-			    (#\. #\. #\.)))
-(defparameter l-tetramino '((#\. #\. #\o)
-			    (#\o #\o #\o)
-			    (#\. #\. #\.)))
-(defparameter t-tetramino '((#\. #\m #\.)
-			    (#\m #\m #\m)
-			    (#\. #\. #\.)))
+(defconstant i-tetramino '((#\. #\. #\. #\.)
+			   (#\c #\c #\c #\c)
+			   (#\. #\. #\. #\.)
+			   (#\. #\. #\. #\.)))
+(defconstant o-tetramino '((#\y #\y)
+			   (#\y #\y)))
+(defconstant z-tetramino '((#\r #\r #\.)
+			   (#\. #\r #\r)
+			   (#\. #\. #\.)))
+(defconstant s-tetramino '((#\. #\g #\g)
+			   (#\g #\g #\.)
+			   (#\. #\. #\.)))
+(defconstant j-tetramino '((#\b #\. #\.)
+			   (#\b #\b #\b)
+			   (#\. #\. #\.)))
+(defconstant l-tetramino '((#\. #\. #\o)
+			   (#\o #\o #\o)
+			   (#\. #\. #\.)))
+(defconstant t-tetramino '((#\. #\m #\.)
+			   (#\m #\m #\m)
+			   (#\. #\. #\.)))
 
 (defun global-init ()
   (setf empty-row (loop for i from 1 to 10 collect #\.))
@@ -36,7 +37,8 @@
 (defun init ()
   (setf *lines-cleared* 0)
   (setf *score* 0)
-  (setf *board* empty-board))
+  (setf *board* empty-board)
+  (setf *tetramino-board* empty-board))
 
 (defvar end-game nil)
 (defun game ()
@@ -74,7 +76,8 @@
     (#\) (rotate-clockwise))
     (#\( (rotate-anti-clockwise))
     (#\; (format t "~%"))
-    (#\P (insert-tetramino))))
+    (#\P (print-matrix *tetramino-board*))
+    ((#\< #\> #\v) (nudge input))))
 
 (defun next-step ()
   (setf *board*
@@ -89,14 +92,10 @@
   (loop for i in row never (char= i #\.)))
 
 (defun insert-tetramino ()
-  (setf *board*
-	(append
-	 (loop
-	    initially (loop for row in *active-tetramino* do (pop *board*))
-	    for row in *active-tetramino*
-	    collect (generate-row row))
-	 *board*))
-  (print-matrix *board*))
+  (loop initially (setf *tetramino-board* empty-board)
+     for x = 0 then (1+ x)
+     for row in *active-tetramino*
+     do (setf (elt *tetramino-board* x) (generate-row row))))
 
 (defun generate-row (row)
   (setf row (mapcar #'char-upcase row))
@@ -106,20 +105,45 @@
 	      (progn (push #\. row) (setf right t)))))
   row)
 
+(defun collision-p (direction)
+  (case direction
+    (#\< (notevery #'(lambda (row) (eql #\. (car row)))
+		*tetramino-board*))
+    (#\> (notevery #'(lambda (row) (eql #\. (car (last row))))
+		 *tetramino-board*))
+    (#\v (notevery #'(lambda (char) (eql #\. char))
+		    (car (last *tetramino-board*))))))
+
+(defun nudge (direction)
+  (unless (collision-p direction)
+    (setf *tetramino-board*
+	  (case direction
+	    (#\< (loop for row in *tetramino-board*
+		    collect (append (cdr row) '(#\.))))
+	    (#\> (loop for row in *tetramino-board*
+		    collect (cons #\. (butlast row))))
+	    (#\v (cons empty-row (butlast *tetramino-board*)))))))
+
 (defun rotate-clockwise ()
-  (setf *active-tetramino* (mapcar #'reverse *active-tetramino*))
-  (rotate-anti-clockwise)
-  (setf *active-tetramino* (mapcar #'reverse *active-tetramino*)))
+  (setf *active-tetramino*
+	 (loop until (null (car *active-tetramino*))
+	    collect (reverse
+		     (loop repeat (length *active-tetramino*)
+			for x = 0 then (1+ x)
+			collect (pop (elt *active-tetramino* x))))))
+  (insert-tetramino))
 
 (defun rotate-anti-clockwise ()
   (setf *active-tetramino*
 	(reverse
-	  (labels ((pop-and-go (l)
+	 (labels ((pop-and-go (l)
 		     (if (null (car l)) nil
 			 (progn
 			   (cons (pop (car l)) (pop-and-go (cdr l)))))))
 	    (loop until (null (car *active-tetramino*))
-	       collect (pop-and-go *active-tetramino*))))))
+	       collect (pop-and-go *active-tetramino*)))))
+  (insert-tetramino))
+  
 
 (defun set-tetramino (input)
   (case input
@@ -129,7 +153,8 @@
     (#\S (setf *active-tetramino* s-tetramino))
     (#\J (setf *active-tetramino* j-tetramino))
     (#\L (setf *active-tetramino* l-tetramino))
-    (#\T (setf *active-tetramino* t-tetramino))))
+    (#\T (setf *active-tetramino* t-tetramino)))
+  (insert-tetramino))
 
 (defun display (val)
   (format t "~a~%" val))
@@ -148,3 +173,6 @@
 	    collect c)))
 
 (game)
+
+
+
